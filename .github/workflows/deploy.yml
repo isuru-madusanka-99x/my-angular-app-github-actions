@@ -17,9 +17,15 @@
       runs-on: self-hosted
       
       steps:
+        - name: Set PowerShell Execution Policy
+          shell: powershell
+          run: |
+            Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+            Write-Host "PowerShell execution policy set to Bypass for this process"
+  
         - name: Get version to deploy
           id: version
-          shell: pwsh
+          shell: powershell
           run: |
             if ("${{ inputs.version }}" -eq "") {
               # Get latest release
@@ -32,7 +38,7 @@
             Write-Host "Deploying version: $version"
   
         - name: Download package
-          shell: pwsh
+          shell: powershell
           run: |
             $version = "${{ steps.version.outputs.tag }}"
             
@@ -47,7 +53,7 @@
             Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "C:\temp\deploy\app.tar.gz" -Headers @{Authorization = "Bearer ${{ secrets.GITHUB_TOKEN }}"}
   
         - name: Deploy to IIS
-          shell: pwsh
+          shell: powershell
           run: |
             # Configuration
             $webRoot = "C:\inetpub\wwwroot\myapp"
@@ -83,7 +89,7 @@
             Write-Host "Deployment completed successfully!"
   
         - name: Verify deployment
-          shell: pwsh
+          shell: powershell
           run: |
             Start-Sleep -Seconds 5
             
@@ -98,6 +104,6 @@
   
         - name: Cleanup
           if: always()
-          shell: pwsh
+          shell: powershell
           run: |
             Remove-Item -Path "C:\temp\deploy" -Recurse -Force -ErrorAction SilentlyContinue
