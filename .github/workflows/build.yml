@@ -50,8 +50,8 @@ jobs:
       - name: Create deployment package
         run: |
           cd dist/my-angular-app-github-actions/browser
-          tar -czf ../../angular-app.tar.gz *
-          cd ../..
+          tar -czf ../../../angular-app.tar.gz *
+          cd ../../..
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
