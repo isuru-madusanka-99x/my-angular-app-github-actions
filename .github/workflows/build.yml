@@ -27,7 +27,7 @@ jobs:
 
       - name: Create web.config for IIS
         run: |
-          cat > dist/browser/web.config << 'EOF'
+          cat > dist/my-angular-app-github-actions/browser/web.config << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
