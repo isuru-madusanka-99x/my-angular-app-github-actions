@@ -19,22 +19,27 @@
       steps:
         - name: Get version to deploy
           id: version
+          shell: cmd
           run: |
-            powershell -ExecutionPolicy Bypass -Command "if (\"${{ inputs.version }}\" -eq \"\") { $releases = Invoke-RestMethod -Uri \"https://api.github.com/repos/${{ github.repository }}/releases\" -Headers @{Authorization = \"Bearer ${{ secrets.GITHUB_TOKEN }}\"}; $version = $releases[0].tag_name } else { $version = \"${{ inputs.version }}\" }; echo \"tag=$version\" >> $env:GITHUB_OUTPUT; Write-Host \"Deploying version: $version\""
+            powershell -ExecutionPolicy Bypass -Command "if (\"%{{ inputs.version }}\" -eq \"\") { $releases = Invoke-RestMethod -Uri \"https://api.github.com/repos/%{{ github.repository }}/releases\" -Headers @{Authorization = \"Bearer %{{ secrets.GITHUB_TOKEN }}\"}; $version = $releases[0].tag_name } else { $version = \"%{{ inputs.version }}\" }; echo \"tag=$version\" >> $env:GITHUB_OUTPUT; Write-Host \"Deploying version: $version\""
   
         - name: Download package
+          shell: cmd
           run: |
-            powershell -ExecutionPolicy Bypass -Command "$version = \"${{ steps.version.outputs.tag }}\"; $release = Invoke-RestMethod -Uri \"https://api.github.com/repos/${{ github.repository }}/releases/tags/$version\" -Headers @{Authorization = \"Bearer ${{ secrets.GITHUB_TOKEN }}\"}; $asset = $release.assets | Where-Object { $_.name -like \"*.tar.gz\" } | Select-Object -First 1; New-Item -ItemType Directory -Path \"C:\temp\deploy\" -Force; Invoke-WebRequest -Uri $asset.browser_download_url -OutFile \"C:\temp\deploy\app.tar.gz\" -Headers @{Authorization = \"Bearer ${{ secrets.GITHUB_TOKEN }}\"}"
+            powershell -ExecutionPolicy Bypass -Command "$version = \"%{{ steps.version.outputs.tag }}\"; $release = Invoke-RestMethod -Uri \"https://api.github.com/repos/%{{ github.repository }}/releases/tags/$version\" -Headers @{Authorization = \"Bearer %{{ secrets.GITHUB_TOKEN }}\"}; $asset = $release.assets | Where-Object { $_.name -like \"*.tar.gz\" } | Select-Object -First 1; New-Item -ItemType Directory -Path \"C:\temp\deploy\" -Force; Invoke-WebRequest -Uri $asset.browser_download_url -OutFile \"C:\temp\deploy\app.tar.gz\" -Headers @{Authorization = \"Bearer %{{ secrets.GITHUB_TOKEN }}\"}"
   
         - name: Deploy to IIS
+          shell: cmd
           run: |
             powershell -ExecutionPolicy Bypass -Command "$webRoot = \"C:\inetpub\wwwroot\myapp\"; $siteName = \"Default Web Site\"; Import-Module WebAdministration; Stop-Website -Name $siteName; if (Test-Path $webRoot) { $timestamp = Get-Date -Format \"yyyyMMdd-HHmmss\"; Copy-Item -Path $webRoot -Destination \"${webRoot}_backup_$timestamp\" -Recurse }; Remove-Item -Path \"$webRoot\*\" -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path $webRoot -Force; Set-Location $webRoot; tar -xzf \"C:\temp\deploy\app.tar.gz\"; $acl = Get-Acl $webRoot; $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(\"IIS_IUSRS\", \"ReadAndExecute\", \"ContainerInherit,ObjectInherit\", \"None\", \"Allow\"); $acl.SetAccessRule($rule); Set-Acl -Path $webRoot -AclObject $acl; Start-Website -Name $siteName; Write-Host \"Deployment completed successfully!\""
   
         - name: Verify deployment
+          shell: cmd
           run: |
             powershell -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 5; $response = Invoke-WebRequest -Uri \"http://localhost/myapp\" -UseBasicParsing; if ($response.StatusCode -eq 200) { Write-Host \"✅ Deployment verified successfully\" } else { Write-Error \"❌ Deployment verification failed\"; exit 1 }"
   
         - name: Cleanup
           if: always()
+          shell: cmd
           run: |
             powershell -ExecutionPolicy Bypass -Command "Remove-Item -Path \"C:\temp\deploy\" -Recurse -Force -ErrorAction SilentlyContinue"
