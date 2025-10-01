@@ -49,7 +49,7 @@ jobs:
 
       - name: Create deployment package
         run: |
-          cd dist/browser
+          cd dist/my-angular-app-github-actions/browser
           tar -czf ../../angular-app.tar.gz *
           cd ../..
 
