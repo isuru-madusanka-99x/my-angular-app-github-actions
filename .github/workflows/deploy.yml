@@ -54,46 +54,46 @@
             New-Item -ItemType Directory -Path "C:\temp\deploy" -Force
             Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "C:\temp\deploy\app.tar.gz" -Headers @{Authorization = "Bearer ${{ secrets.GITHUB_TOKEN }}"}
   
-            - name: Deploy to IIS
-            run: |
-              # Configuration
-              $webRoot = "C:\inetpub\wwwroot\myapp"
-              $siteName = "Default Web Site"
+        - name: Deploy to IIS
+          run: |
+            # Configuration
+            $webRoot = "C:\inetpub\wwwroot\myapp"
+            $siteName = "Default Web Site"
               
-              # Stop IIS using appcmd (more reliable than PowerShell cmdlets)
-              Write-Host "Stopping website: $siteName"
-              & "${env:SystemRoot}\System32\inetsrv\appcmd.exe" stop site "$siteName"
+            # Stop IIS using appcmd (more reliable than PowerShell cmdlets)
+            Write-Host "Stopping website: $siteName"
+            & "${env:SystemRoot}\System32\inetsrv\appcmd.exe" stop site "$siteName"
               
-              # Backup existing files
-              if (Test-Path $webRoot) {
-                $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-                $backupPath = "${webRoot}_backup_$timestamp"
-                Write-Host "Creating backup at: $backupPath"
-                Copy-Item -Path $webRoot -Destination $backupPath -Recurse
-              }
+            # Backup existing files
+            if (Test-Path $webRoot) {
+              $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+              $backupPath = "${webRoot}_backup_$timestamp"
+              Write-Host "Creating backup at: $backupPath"
+              Copy-Item -Path $webRoot -Destination $backupPath -Recurse
+            }
               
-              # Clear directory
-              Write-Host "Clearing web root: $webRoot"
-              Remove-Item -Path "$webRoot\*" -Recurse -Force -ErrorAction SilentlyContinue
-              New-Item -ItemType Directory -Path $webRoot -Force
+            # Clear directory
+            Write-Host "Clearing web root: $webRoot"
+            Remove-Item -Path "$webRoot\*" -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $webRoot -Force
               
-              # Extract files
-              Write-Host "Extracting application files"
-              Set-Location $webRoot
-              tar -xzf "C:\temp\deploy\app.tar.gz"
+            # Extract files
+            Write-Host "Extracting application files"
+            Set-Location $webRoot
+            tar -xzf "C:\temp\deploy\app.tar.gz"
               
-              # Set permissions
-              Write-Host "Setting file permissions"
-              $acl = Get-Acl $webRoot
-              $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("IIS_IUSRS", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
-              $acl.SetAccessRule($rule)
-              Set-Acl -Path $webRoot -AclObject $acl
+            # Set permissions
+            Write-Host "Setting file permissions"
+            $acl = Get-Acl $webRoot
+            $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("IIS_IUSRS", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
+            $acl.SetAccessRule($rule)
+            Set-Acl -Path $webRoot -AclObject $acl
               
-              # Start IIS using appcmd
-              Write-Host "Starting website: $siteName"
-              & "${env:SystemRoot}\System32\inetsrv\appcmd.exe" start site "$siteName"
+            # Start IIS using appcmd
+            Write-Host "Starting website: $siteName"
+            & "${env:SystemRoot}\System32\inetsrv\appcmd.exe" start site "$siteName"
               
-              Write-Host "Deployment completed successfully!"
+            Write-Host "Deployment completed successfully!"
   
         - name: Verify deployment
           run: |
