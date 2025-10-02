@@ -59,15 +59,19 @@
             # Configuration
             $webRoot = "C:\inetpub\wwwroot\myapp"
             $siteName = "Default Web Site"
+            $backupDir = "C:\temp\backups"
+              
+            # Create backup directory (no permission issues in temp)
+            New-Item -ItemType Directory -Path $backupDir -Force
               
             # Stop IIS using appcmd (more reliable than PowerShell cmdlets)
             Write-Host "Stopping website: $siteName"
             & "${env:SystemRoot}\System32\inetsrv\appcmd.exe" stop site "$siteName"
               
-            # Backup existing files
+            # Backup existing files to temp directory
             if (Test-Path $webRoot) {
               $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-              $backupPath = "${webRoot}_backup_$timestamp"
+              $backupPath = "$backupDir\myapp_backup_$timestamp"
               Write-Host "Creating backup at: $backupPath"
               Copy-Item -Path $webRoot -Destination $backupPath -Recurse
             }
@@ -111,4 +115,18 @@
         - name: Cleanup
           if: always()
           run: |
+            # Clean up deployment files
             Remove-Item -Path "C:\temp\deploy" -Recurse -Force -ErrorAction SilentlyContinue
+            
+            # Clean up old backups (keep last 5)
+            $backupDir = "C:\temp\backups"
+            if (Test-Path $backupDir) {
+              $backups = Get-ChildItem -Path $backupDir -Directory | Sort-Object CreationTime -Descending
+              if ($backups.Count -gt 5) {
+                $oldBackups = $backups | Select-Object -Skip 5
+                foreach ($backup in $oldBackups) {
+                  Remove-Item -Path $backup.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                  Write-Host "Removed old backup: $($backup.Name)"
+                }
+              }
+            }
