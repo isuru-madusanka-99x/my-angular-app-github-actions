@@ -76,9 +76,24 @@
               Copy-Item -Path $webRoot -Destination $backupPath -Recurse
             }
               
-            # Clear directory
+            # Clear directory with better error handling
             Write-Host "Clearing web root: $webRoot"
-            Remove-Item -Path "$webRoot\*" -Recurse -Force -ErrorAction SilentlyContinue
+            if (Test-Path $webRoot) {
+              # Try to remove files with different approaches
+              try {
+                Remove-Item -Path "$webRoot\*" -Recurse -Force -ErrorAction Stop
+              } catch {
+                Write-Warning "Could not remove all files: $($_.Exception.Message)"
+                # Try individual file removal
+                Get-ChildItem -Path $webRoot -Force | ForEach-Object {
+                  try {
+                    Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
+                  } catch {
+                    Write-Warning "Could not remove: $($_.Name)"
+                  }
+                }
+              }
+            }
             New-Item -ItemType Directory -Path $webRoot -Force
               
             # Extract files to temp directory first, then copy
@@ -88,9 +103,19 @@
             Set-Location $tempExtractPath
             tar -xzf "C:\temp\deploy\app.tar.gz"
               
-            # Copy extracted files to web root
-            Write-Host "Copying files to web root"
-            Copy-Item -Path "$tempExtractPath\*" -Destination $webRoot -Recurse -Force
+            # Copy extracted files to web root with robocopy (better for permissions)
+            Write-Host "Copying files to web root using robocopy"
+            $robocopyArgs = @("$tempExtractPath", $webRoot, "/E", "/R:3", "/W:1", "/NFL", "/NDL")
+            $robocopyResult = & robocopy @robocopyArgs
+            $exitCode = $LASTEXITCODE
+            
+            # Robocopy exit codes: 0-7 are success, 8+ are error
+            if ($exitCode -ge 8) {
+              Write-Error "Robocopy failed with exit code: $exitCode"
+              exit 1
+            } else {
+              Write-Host "Files copied successfully (robocopy exit code: $exitCode)"
+            }
               
             # Set permissions (try with error handling)
             Write-Host "Setting file permissions"
