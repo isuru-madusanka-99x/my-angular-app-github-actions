@@ -81,17 +81,29 @@
             Remove-Item -Path "$webRoot\*" -Recurse -Force -ErrorAction SilentlyContinue
             New-Item -ItemType Directory -Path $webRoot -Force
               
-            # Extract files
-            Write-Host "Extracting application files"
-            Set-Location $webRoot
+            # Extract files to temp directory first, then copy
+            Write-Host "Extracting application files to temp directory"
+            $tempExtractPath = "C:\temp\extract"
+            New-Item -ItemType Directory -Path $tempExtractPath -Force
+            Set-Location $tempExtractPath
             tar -xzf "C:\temp\deploy\app.tar.gz"
               
-            # Set permissions
+            # Copy extracted files to web root
+            Write-Host "Copying files to web root"
+            Copy-Item -Path "$tempExtractPath\*" -Destination $webRoot -Recurse -Force
+              
+            # Set permissions (try with error handling)
             Write-Host "Setting file permissions"
-            $acl = Get-Acl $webRoot
-            $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("IIS_IUSRS", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
-            $acl.SetAccessRule($rule)
-            Set-Acl -Path $webRoot -AclObject $acl
+            try {
+              $acl = Get-Acl $webRoot
+              $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("IIS_IUSRS", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
+              $acl.SetAccessRule($rule)
+              Set-Acl -Path $webRoot -AclObject $acl
+              Write-Host "Permissions set successfully"
+            } catch {
+              Write-Warning "Could not set ACL permissions: $($_.Exception.Message)"
+              Write-Host "Continuing without ACL changes..."
+            }
               
             # Start IIS using appcmd
             Write-Host "Starting website: $siteName"
@@ -117,6 +129,7 @@
           run: |
             # Clean up deployment files
             Remove-Item -Path "C:\temp\deploy" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path "C:\temp\extract" -Recurse -Force -ErrorAction SilentlyContinue
             
             # Clean up old backups (keep last 5)
             $backupDir = "C:\temp\backups"
